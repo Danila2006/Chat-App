@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="style1.css">
+</head>
+<body>
+    <div class="flex_container">
+        <h1 class="chat_name">Chat name</h1>
+        <p class="paragraph">Chat description Chat description Chat description</p>
+        <button class="first_button" id="createChatButton">Create new secret chat</button>
+        <button class="second_button" id="restoreChatButton">Restore chat</button>
+    </div>
+
+    <script>
+        document.getElementById('createChatButton').addEventListener('click', function() {
+            window.location.href = 'index.html';
+        });
+
+        document.getElementById('restoreChatButton').addEventListener('click', function() {
+            const sessionId = prompt("Enter your session ID to restore the chat:");
+    
+            if (sessionId) {
+                if (sessionStorage.getItem('sessionId') === sessionId) {
+                    sessionStorage.setItem('sessionId', sessionId);
+                    window.location.href = 'index.html';
+                } else {
+                    alert("Invalid session ID. Please check and try again.");
+                }
+            } else {
+                alert("Session ID is required to restore the chat.");
+            }
+        });
+    </script>
+</body>
+</html>

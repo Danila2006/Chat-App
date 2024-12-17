@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="session-info" id="sessionInfo"></div>
+        <div class="messages" id="messages">
+            <!-- Messages will be appended here dynamically -->
+        </div>
+        <div class="input-container">
+            <input type="text" id="messageInput" placeholder="Type your message...">
+            <button id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = new WebSocket('ws://localhost:8080');
+        const messagesDiv = document.getElementById('messages');
+        const input = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+    
+        const username = sessionStorage.getItem('username') || prompt('Enter your username');
+        sessionStorage.setItem('username', username);
+    
+        const sessionId = sessionStorage.getItem('sessionId') || crypto.randomUUID();
+        sessionStorage.setItem('sessionId', sessionId);
+    
+        // Display session info
+        const sessionInfoDiv = document.getElementById('sessionInfo');
+        sessionInfoDiv.innerText = `Session ID: ${sessionId}`;
+        sessionInfoDiv.style.textAlign = 'center';
+        sessionInfoDiv.style.padding = '10px';
+        sessionInfoDiv.style.fontWeight = 'bold';
+        sessionInfoDiv.style.borderBottom = '1px solid #ddd';
+    
+        const encryptionKey = 'default_secret_key';
+    
+        socket.onopen = () => {
+            console.log('WebSocket connection opened');
+            socket.send(JSON.stringify({
+                type: 'options',
+                sessionId: sessionId,
+                data: { username: username }
+            }));
+        };
+    
+        socket.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+    
+            if (message.type === 'message') {
+                const decryptedMessage = decryptMessage(message.data.message);
+                const sender = message.data.sender;
+                appendMessage(sender, decryptedMessage, sender === username ? 'sender' : 'receiver');
+            }
+        };
+    
+        sendButton.addEventListener('click', () => {
+            const text = input.value;
+            if (!text.trim()) return;
+    
+            const encryptedMessage = encryptMessage(text);
+            socket.send(JSON.stringify({
+                type: 'message',
+                sessionId: sessionId,
+                data: {
+                    sender: username,
+                    message: encryptedMessage
+                }
+            }));
+    
+            appendMessage(username, text, 'sender');
+            input.value = '';
+        });
+    
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                sendButton.click();
+            }
+        });
+    
+        function appendMessage(sender, text, cssClass) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', cssClass);
+            messageDiv.innerText = `${sender}: ${text}`;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+    
+        function encryptMessage(message) {
+            const key = encryptionKey.padEnd(32, '0');
+            const iv = crypto.getRandomValues(new Uint8Array(16));
+            const encodedMessage = new TextEncoder().encode(message);
+    
+            return `${Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join('')}:${btoa(String.fromCharCode(...encodedMessage))}`;
+        }
+    
+        function decryptMessage(encryptedMessage) {
+            const [iv, encodedMessage] = encryptedMessage.split(':');
+            const decodedMessage = atob(encodedMessage);
+    
+            return decodedMessage;
+        }
+    </script>
+</body>
+</html>
